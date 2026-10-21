@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Repository Administrator View</h1>
+  <p class="page-subtitle">Configure repository connections, define retrieval scope allow/deny rules, and reset cache.</p>
+</div>
+
+<!-- Scope Configuration Card -->
+<div class="card">
+  <div class="card-title">Configure Repository Retrieval Scope</div>
+  <form id="scope-form">
+    <div class="form-group">
+      <label class="form-label" for="scope-repo-id">Repository</label>
+      <select id="scope-repo-id" class="form-input">
+        {% for r in repos %}
+        <option value="{{ r.repo_id }}">{{ r.repo_id }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="scope-allow-paths">Allowed Retrieval Paths (comma-separated, leave blank for all)</label>
+      <input type="text" id="scope-allow-paths" class="form-input" value="shopkit/, tests/">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="scope-deny-paths">Denied / Restricted Paths (comma-separated, blocked from retrieval)</label>
+      <input type="text" id="scope-deny-paths" class="form-input" value="shopkit/internal/">
+    </div>
+    <button type="submit" class="btn btn-primary">Save Scope Rules</button>
+  </form>
+</div>
+
+<!-- Maintenance & Reset Card -->
+<div class="card">
+  <div class="card-title">System Maintenance</div>
+  <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+    Clear all in-memory and database tables to re-run automated verification benchmarks from scratch.
+  </p>
+  <button id="reset-prs-btn" class="btn btn-secondary" style="color: var(--color-non-compliant); border-color: var(--color-non-compliant);">
+    Reset Verification Database & Cache
+  </button>
+</div>
+{% endblock %}

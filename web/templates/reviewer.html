@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Reviewer & Maintainer View</h1>
+  <p class="page-subtitle">Inspect flagged pull requests, review automated verification evidence, and apply manual overrides.</p>
+</div>
+
+<div class="card">
+  <div class="card-title">Flagged Pull Requests Requiring Attention</div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>PR #</th>
+          <th>Title</th>
+          <th>AI Review</th>
+          <th>Verified Verdict</th>
+          <th>Case</th>
+          <th>Rationale</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in flagged_prs %}
+        <tr>
+          <td>#{{ pr.pr_number }}</td>
+          <td>{{ pr.title }}</td>
+          <td><span class="badge badge-non-compliant">{{ pr.initial_verdict }}</span></td>
+          <td>
+            {% if pr.final_verdict == 'COMPLIANT' %}
+              <span class="badge badge-compliant">COMPLIANT</span>
+            {% else %}
+              <span class="badge badge-non-compliant">NON-COMPLIANT</span>
+            {% endif %}
+            {% if pr.is_overridden %}
+              <span class="badge badge-case-2" title="Overridden by {{ pr.overridden_by }}">OVERRIDDEN</span>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-case-4">{{ pr.case_code }}</span></td>
+          <td style="max-width: 300px; font-size: 0.8rem;">{{ pr.decision_reason }}</td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              <a href="/developer?pr_id={{ pr.pr_id }}" class="btn btn-secondary btn-sm">Evidence</a>
+              <button onclick="overrideVerdict('{{ pr.pr_id }}', '{{ pr.final_verdict }}')" class="btn btn-primary btn-sm">Override</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted);">No flagged pull requests or escalations currently pending review.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

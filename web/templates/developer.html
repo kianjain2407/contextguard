@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Developer View</h1>
+  <p class="page-subtitle">Submit pull requests for context-grounded verification and inspect verified verdicts.</p>
+</div>
+
+<!-- PR Submission Card -->
+<div class="card">
+  <div class="card-title">Submit Pull Request for Verification</div>
+  <form id="pr-submit-form">
+    <div class="form-group">
+      <label class="form-label" for="pr-url-input">GitHub Pull Request URL or PR Number (1-9)</label>
+      <input type="text" id="pr-url-input" class="form-input" placeholder="https://github.com/shopkit/shopkit/pull/1" value="https://github.com/shopkit/shopkit/pull/1" required>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <button type="submit" id="pr-submit-btn" class="btn btn-primary">Verify PR</button>
+      <div id="submit-status" style="font-size: 0.85rem;"></div>
+    </div>
+  </form>
+
+  <div style="margin-top: 1rem;">
+    <span class="form-label">Quick Run Sample Scenarios:</span>
+    <div class="quick-btn-group">
+      <button onclick="loadQuickPr(1)" class="btn btn-secondary btn-sm">PR-1 (Clamp - Case 1)</button>
+      <button onclick="loadQuickPr(2)" class="btn btn-secondary btn-sm">PR-2 (Average - Case 2)</button>
+      <button onclick="loadQuickPr(3)" class="btn btn-secondary btn-sm">PR-3 (Palindrome - Case 3)</button>
+      <button onclick="loadQuickPr(4)" class="btn btn-secondary btn-sm">PR-4 (Slugify - Decisive Context)</button>
+      <button onclick="loadQuickPr(5)" class="btn btn-secondary btn-sm">PR-5 (Percent - Compliant)</button>
+      <button onclick="loadQuickPr(6)" class="btn btn-secondary btn-sm">PR-6 (Truncate - False Neg)</button>
+      <button onclick="loadQuickPr(7)" class="btn btn-secondary btn-sm">PR-7 (Email - Case 4)</button>
+      <button onclick="loadQuickPr(8)" class="btn btn-secondary btn-sm">PR-8 (Cart Total - Case 1)</button>
+      <button onclick="loadQuickPr(9)" class="btn btn-secondary btn-sm">PR-9 (Password - Compliant)</button>
+    </div>
+  </div>
+</div>
+
+{% if selected_pr %}
+<!-- Selected PR Inspection -->
+<div class="card">
+  <div class="card-title">
+    <span>PR #{{ selected_pr.pr_number }}: {{ selected_pr.title }}</span>
+    {% if evidence.verdict %}
+      {% if evidence.verdict.final_verdict == 'COMPLIANT' %}
+        <span class="badge badge-compliant">VERIFIED COMPLIANT</span>
+      {% else %}
+        <span class="badge badge-non-compliant">NON-COMPLIANT</span>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Stage 2 AI Review</div>
+      <div class="metric-value" style="font-size: 1.25rem;">
+        {% if evidence.review %}
+          {% if evidence.review.initial_verdict == 'COMPLIANT' %}
+            <span style="color: var(--color-compliant);">COMPLIANT</span>
+          {% else %}
+            <span style="color: var(--color-non-compliant);">NON-COMPLIANT</span>
+          {% endif %}
+        {% else %}
+          N/A
+        {% endif %}
+      </div>
+      <div class="metric-sub">{{ evidence.review.explanation if evidence.review else 'No review stored.' }}</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Stage 5 Final Verdict</div>
+      <div class="metric-value" style="font-size: 1.25rem;">
+        {% if evidence.verdict %}
+          {% if evidence.verdict.final_verdict == 'COMPLIANT' %}
+            <span style="color: var(--color-compliant);">COMPLIANT</span>
+          {% else %}
+            <span style="color: var(--color-non-compliant);">NON-COMPLIANT</span>
+          {% endif %}
+          <span style="font-size: 0.85rem; color: var(--text-muted);">({{ evidence.verdict.case_code }})</span>
+        {% else %}
+          PENDING
+        {% endif %}
+      </div>
+      <div class="metric-sub">{{ evidence.verdict.decision_reason if evidence.verdict else 'Awaiting run.' }}</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Execution Results</div>
+      <div class="metric-value" style="font-size: 1.25rem;">
+        {% if evidence.run %}
+          Orig: <span style="color: {% if evidence.run.original_failed == 0 and evidence.run.original_errors == 0 %}var(--color-compliant){% else %}var(--color-non-compliant){% endif %};">{{ evidence.run.original_passed }}P / {{ evidence.run.original_failed + evidence.run.original_errors }}F</span>
+          | Fix: <span style="color: {% if evidence.run.fix_failed == 0 and evidence.run.fix_errors == 0 %}var(--color-compliant){% else %}var(--color-non-compliant){% endif %};">{{ evidence.run.fix_passed }}P / {{ evidence.run.fix_failed + evidence.run.fix_errors }}F</span>
+        {% else %}
+          N/A
+        {% endif %}
+      </div>
+      <div class="metric-sub">Runtime: {{ '%.2f'|format(evidence.run.execution_time_ms) if evidence.run else 0 }}ms</div>
+    </div>
+  </div>
+
+  <div class="split-view">
+    <div>
+      <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Code Diff</h3>
+      <pre><code>{{ selected_pr.diff }}</code></pre>
+    </div>
+    <div>
+      <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Synthesized Test Suite</h3>
+      <pre><code>{{ evidence.tests.test_code if evidence.tests else 'No tests synthesized (Fast exit).' }}</code></pre>
+    </div>
+  </div>
+
+  {% if evidence.snippets %}
+  <div style="margin-top: 1.25rem;">
+    <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Retrieved Repository Context (Top Snippets)</h3>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Identifier</th>
+            <th>File Path</th>
+            <th>Type</th>
+            <th>RRF Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in evidence.snippets %}
+          <tr>
+            <td><code>{{ s.identifier }}</code></td>
+            <td>{{ s.file_path }}</td>
+            <td><span class="badge badge-case-1">{{ s.snippet_type }}</span></td>
+            <td>{{ '%.4f'|format(s.rrf_score or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Recent Pull Requests -->
+<div class="card">
+  <div class="card-title">Recent Pull Requests</div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>PR #</th>
+          <th>Title</th>
+          <th>Author</th>
+          <th>Final Verdict</th>
+          <th>Case Code</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in recent_prs %}
+        <tr>
+          <td>#{{ pr.pr_number }}</td>
+          <td>{{ pr.title }}</td>
+          <td>{{ pr.author }}</td>
+          <td>
+            {% if pr.final_verdict == 'COMPLIANT' %}
+              <span class="badge badge-compliant">COMPLIANT</span>
+            {% elif pr.final_verdict == 'NON_COMPLIANT' %}
+              <span class="badge badge-non-compliant">NON-COMPLIANT</span>
+            {% else %}
+              <span class="badge badge-fast-exit">PENDING</span>
+            {% endif %}
+          </td>
+          <td><code>{{ pr.case_code or 'N/A' }}</code></td>
+          <td>{{ pr.status }}</td>
+          <td>
+            <a href="/developer?pr_id={{ pr.pr_id }}" class="btn btn-secondary btn-sm">Inspect</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted);">No pull requests submitted yet. Use the form above to verify a PR.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

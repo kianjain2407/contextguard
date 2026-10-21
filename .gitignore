@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# DuckDB runtime database files
+data/*.duckdb
+data/*.duckdb.wal
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

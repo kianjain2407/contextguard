@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ContextGuard — Verification Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand-container">
+      <a href="/" class="brand-title">ContextGuard</a>
+      <span class="brand-badge">Verification Layer</span>
+    </div>
+    <div class="nav-links">
+      <a href="/developer" class="nav-link {% if role == 'DEVELOPER' %}active{% endif %}">Developer</a>
+      <a href="/reviewer" class="nav-link {% if role == 'REVIEWER' %}active{% endif %}">Reviewer</a>
+      <a href="/qa" class="nav-link {% if role == 'QA' %}active{% endif %}">QA Auditor</a>
+      <a href="/security" class="nav-link {% if role == 'SECURITY' %}active{% endif %}">Security</a>
+      <a href="/manager" class="nav-link {% if role == 'MANAGER' %}active{% endif %}">Manager</a>
+      <a href="/admin" class="nav-link {% if role == 'ADMIN' %}active{% endif %}">Admin</a>
+      <a href="/notifications" class="nav-link {% if role == 'NOTIFICATIONS' %}active{% endif %}">Notifications</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
