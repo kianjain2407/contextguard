@@ -3,6 +3,7 @@ Stage 5: Execution Sandbox.
 Executes code and test suites in an isolated Python subprocess with hard timeouts.
 """
 import sys
+import re
 import subprocess
 import tempfile
 import os
@@ -57,7 +58,10 @@ import os
 
             output_text = stdout + "\n" + stderr
 
-            if "OK" in stderr or "OK" in stdout:
+            # unittest writes "OK" at end of stderr for clean runs
+            test_passed_clean = bool(re.search(r'\bOK\b', stderr)) or returncode == 0
+
+            if test_passed_clean and "FAIL" not in stderr and "ERROR" not in stderr:
                 m = re.search(r'Ran (\d+) test', output_text)
                 passed_count = int(m.group(1)) if m else 1
             else:
@@ -107,5 +111,3 @@ import os
                 "stderr": str(ex),
                 "timed_out": False
             }
-
-import re

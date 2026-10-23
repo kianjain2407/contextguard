@@ -436,7 +436,9 @@ class GitHubClient:
                     return self.fetch_pr_data(f"https://github.com/{owner}/{repo}/commit/{sha}")
 
         except Exception as e:
-            pass
+            # Log error for visibility; fall through to mock fallback
+            import sys
+            print(f"[ContextGuard] GitHubClient fetch error for {pr_url!r}: {e}", file=sys.stderr)
 
         # Fallback to mock PR 1 if unknown or offline
         fallback = dict(MOCK_PRS.get(pr_number, MOCK_PRS[1]))

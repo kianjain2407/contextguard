@@ -2,13 +2,17 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
-# DuckDB runtime database files
+# DuckDB & SQLite runtime database files (generated at runtime)
 data/*.duckdb
 data/*.duckdb.wal
+data/*.sqlite3
+data/*.db
 
 # Environments
 .env
+.env.local
 .venv
 env/
 venv/
@@ -20,3 +24,17 @@ ENV/
 .DS_Store
 Thumbs.db
 *.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Pytest cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak

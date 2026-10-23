@@ -29,13 +29,14 @@ def health_check():
     """System health check endpoint."""
     uptime = time.time() - APP_START_TIME
     db_ok = True
+    repo_count = 0
+    pr_count = 0
     try:
         db.query_one("SELECT 1")
+        repo_count = len(db.query_all("SELECT repo_id FROM repositories"))
+        pr_count = len(db.query_all("SELECT pr_id FROM pull_requests"))
     except Exception:
         db_ok = False
-
-    repo_count = len(db.query_all("SELECT * FROM repositories"))
-    pr_count = len(db.query_all("SELECT * FROM pull_requests"))
 
     return jsonify({
         "status": "ok" if db_ok else "degraded",

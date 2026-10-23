@@ -27,6 +27,7 @@ class PipelineRunner:
         start_time = time.time()
 
         # Step 0: Ingest & get PR identifier
+        pr_id = None  # Initialize early to prevent UnboundLocalError in except block
         try:
             pr_data = ingest_pull_request(pr_url)
             pr_id = pr_data["pr_id"]

@@ -1,7 +1,6 @@
-// ContextGuard Dashboard Client Scripts
+// ContextGuard — Professional Dashboard Client Script
 
 document.addEventListener("DOMContentLoaded", function () {
-  // PR & Repository Submission Form
   const prForm = document.getElementById("pr-submit-form");
   const alertBanner = document.getElementById("pr-alert-banner");
 
@@ -12,16 +11,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     alertBanner.style.display = "block";
     if (type === "error") {
-      alertBanner.style.background = "#450a0a";
-      alertBanner.style.border = "1px solid #dc2626";
+      alertBanner.style.background = "rgba(127, 29, 29, 0.5)";
+      alertBanner.style.border = "1px solid #ef4444";
       alertBanner.style.color = "#fca5a5";
     } else if (type === "warning") {
-      alertBanner.style.background = "#451a03";
-      alertBanner.style.border = "1px solid #d97706";
+      alertBanner.style.background = "rgba(120, 53, 15, 0.5)";
+      alertBanner.style.border = "1px solid #f59e0b";
       alertBanner.style.color = "#fcd34d";
     } else {
-      alertBanner.style.background = "#052e16";
-      alertBanner.style.border = "1px solid #16a34a";
+      alertBanner.style.background = "rgba(6, 78, 59, 0.5)";
+      alertBanner.style.border = "1px solid #10b981";
       alertBanner.style.color = "#86efac";
     }
     alertBanner.innerHTML = msg;
@@ -45,9 +44,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       clearAlert();
       btn.disabled = true;
-      const originalText = "🔍 Fact-Check This Code";
-      btn.innerText = "Checking...";
-      if (statusDiv) statusDiv.innerHTML = "<span style='color: #38bdf8;'>Running ContextGuard verification...</span>";
+      const originalText = "<span>🔍</span><span>Fact-Check This Code</span>";
+      btn.innerHTML = "<span>⏳</span><span>Verifying in Sandbox...</span>";
+      if (statusDiv) {
+        statusDiv.innerHTML = "<span style='color: #60a5fa;'>Executing ContextGuard verification pipeline...</span>";
+      }
 
       fetch("/api/submit_pr", {
         method: "POST",
@@ -57,9 +58,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .then(res => res.json())
       .then(data => {
         btn.disabled = false;
-        btn.innerText = originalText;
+        btn.innerHTML = originalText;
         if (data.status === "COMPLETED" || data.status === "CACHED") {
-          if (statusDiv) statusDiv.innerHTML = "<span style='color: #4ade80;'>Verified! Redirecting...</span>";
+          if (statusDiv) statusDiv.innerHTML = "<span style='color: #34d399;'>Verified! Redirecting...</span>";
           window.location.href = `/developer?pr_id=${encodeURIComponent(data.pr_id)}`;
         } else if (data.status === "FAIL_OPEN") {
           showAlert(`<strong>Fail-Open Fallback:</strong> ${data.decision_reason}`, "warning");
@@ -73,14 +74,14 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .catch(err => {
         btn.disabled = false;
-        btn.innerText = originalText;
+        btn.innerHTML = originalText;
         showAlert(`<strong>Request Failed:</strong> ${err.message}`, "error");
         if (statusDiv) statusDiv.innerText = "";
       });
     });
   }
 
-  // Quick PR Selection Helper
+  // Quick Benchmark Scenario Helper
   window.loadQuickPr = function (num) {
     const input = document.getElementById("pr-url-input");
     if (input) {
@@ -89,69 +90,4 @@ document.addEventListener("DOMContentLoaded", function () {
       if (form) form.requestSubmit();
     }
   };
-
-  // Reviewer Override Function
-  window.overrideVerdict = function (prId, currentVerdict) {
-    const newVerdict = currentVerdict === "COMPLIANT" ? "NON_COMPLIANT" : "COMPLIANT";
-    const reason = prompt(`Enter justification for overriding ${prId} to ${newVerdict}:`, "Manual inspection by reviewer.");
-    if (!reason) return;
-
-    fetch("/api/override_verdict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pr_id: prId,
-        new_verdict: newVerdict,
-        reviewer_name: "Lead Reviewer",
-        reason: reason
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === "success") {
-        alert(`Verdict successfully updated to ${newVerdict}.`);
-        window.location.reload();
-      } else {
-        alert("Failed to override verdict.");
-      }
-    })
-    .catch(err => alert("Error overriding verdict: " + err.message));
-  };
-
-  // Admin Scope Update
-  const scopeForm = document.getElementById("scope-form");
-  if (scopeForm) {
-    scopeForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const repoId = document.getElementById("scope-repo-id").value;
-      const allowPaths = document.getElementById("scope-allow-paths").value;
-      const denyPaths = document.getElementById("scope-deny-paths").value;
-
-      fetch("/api/update_scope", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo_id: repoId, allow_paths: allowPaths, deny_paths: denyPaths })
-      })
-      .then(res => res.json())
-      .then(data => {
-        alert("Scope rules updated successfully.");
-        window.location.reload();
-      })
-      .catch(err => alert("Failed to update scope: " + err.message));
-    });
-  }
-
-  // Admin Reset PRs
-  const resetBtn = document.getElementById("reset-prs-btn");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", function () {
-      if (!confirm("Reset all PR verification history and database tables?")) return;
-      fetch("/api/reset_prs", { method: "POST" })
-      .then(res => res.json())
-      .then(data => {
-        alert("Database successfully reset.");
-        window.location.reload();
-      });
-    });
-  }
 });
