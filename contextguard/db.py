@@ -210,10 +210,12 @@ class DatabaseManager:
                 conn.close()
                 return rows
             else:
-                rel = conn.execute(query, params)
-                df = rel.df()
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                cols = [desc[0] for desc in cursor.description] if cursor.description else []
+                rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
                 conn.close()
-                return df.to_dict(orient="records")
+                return rows
 
     def query_one(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         rows = self.query_all(query, params)
