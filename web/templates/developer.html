@@ -7,16 +7,17 @@
 
 <!-- PR Submission Card -->
 <div class="card">
-  <div class="card-title">Submit Pull Request for Verification</div>
+  <div class="card-title">Submit Repository or Pull Request for Verification</div>
   <form id="pr-submit-form">
     <div class="form-group">
-      <label class="form-label" for="pr-url-input">GitHub Pull Request URL or PR Number (1-9)</label>
-      <input type="text" id="pr-url-input" class="form-input" placeholder="https://github.com/shopkit/shopkit/pull/1" value="https://github.com/shopkit/shopkit/pull/1" required>
+      <label class="form-label" for="pr-url-input">GitHub Repository URL (e.g. https://github.com/snehal-k296/HabiCity.git), Pull Request URL, or Scenario (1-9)</label>
+      <input type="text" id="pr-url-input" class="form-input" placeholder="https://github.com/snehal-k296/HabiCity.git" value="https://github.com/shopkit/shopkit/pull/1" required>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center;">
-      <button type="submit" id="pr-submit-btn" class="btn btn-primary">Verify PR</button>
+      <button type="submit" id="pr-submit-btn" class="btn btn-primary">Verify Codebase / PR</button>
       <div id="submit-status" style="font-size: 0.85rem;"></div>
     </div>
+    <div id="pr-alert-banner" style="display: none; margin-top: 0.85rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.9rem;"></div>
   </form>
 
   <div style="margin-top: 1rem;">

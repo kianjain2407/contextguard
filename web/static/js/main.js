@@ -1,8 +1,39 @@
 // ContextGuard Dashboard Client Scripts
 
 document.addEventListener("DOMContentLoaded", function () {
-  // PR Submission Form
+  // PR & Repository Submission Form
   const prForm = document.getElementById("pr-submit-form");
+  const alertBanner = document.getElementById("pr-alert-banner");
+
+  function showAlert(msg, type = "error") {
+    if (!alertBanner) {
+      alert(msg);
+      return;
+    }
+    alertBanner.style.display = "block";
+    if (type === "error") {
+      alertBanner.style.background = "#450a0a";
+      alertBanner.style.border = "1px solid #dc2626";
+      alertBanner.style.color = "#fca5a5";
+    } else if (type === "warning") {
+      alertBanner.style.background = "#451a03";
+      alertBanner.style.border = "1px solid #d97706";
+      alertBanner.style.color = "#fcd34d";
+    } else {
+      alertBanner.style.background = "#052e16";
+      alertBanner.style.border = "1px solid #16a34a";
+      alertBanner.style.color = "#86efac";
+    }
+    alertBanner.innerHTML = msg;
+  }
+
+  function clearAlert() {
+    if (alertBanner) {
+      alertBanner.style.display = "none";
+      alertBanner.innerHTML = "";
+    }
+  }
+
   if (prForm) {
     prForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -12,7 +43,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!input || !input.value.trim()) return;
 
+      clearAlert();
       btn.disabled = true;
+      const originalText = "Verify Codebase / PR";
       btn.innerText = "Verifying...";
       if (statusDiv) statusDiv.innerHTML = "<span style='color: #38bdf8;'>Running ContextGuard verification pipeline...</span>";
 
@@ -24,21 +57,24 @@ document.addEventListener("DOMContentLoaded", function () {
       .then(res => res.json())
       .then(data => {
         btn.disabled = false;
-        btn.innerText = "Verify PR";
+        btn.innerText = originalText;
         if (data.status === "COMPLETED" || data.status === "CACHED") {
+          if (statusDiv) statusDiv.innerHTML = "<span style='color: #4ade80;'>Verified! Redirecting...</span>";
           window.location.href = `/developer?pr_id=${encodeURIComponent(data.pr_id)}`;
         } else if (data.status === "FAIL_OPEN") {
-          alert(`Fail-Open Triggered: ${data.decision_reason}`);
-          window.location.href = `/developer?pr_id=${encodeURIComponent(data.pr_id)}`;
+          showAlert(`<strong>Fail-Open Fallback:</strong> ${data.decision_reason}`, "warning");
+          setTimeout(() => {
+            window.location.href = `/developer?pr_id=${encodeURIComponent(data.pr_id)}`;
+          }, 1200);
         } else {
-          alert(`Error: ${data.error || "Verification failed."}`);
+          showAlert(`<strong>Verification Error:</strong> ${data.error || "Verification failed."}`, "error");
           if (statusDiv) statusDiv.innerText = "";
         }
       })
       .catch(err => {
         btn.disabled = false;
-        btn.innerText = "Verify PR";
-        alert(`Request failed: ${err.message}`);
+        btn.innerText = originalText;
+        showAlert(`<strong>Request Failed:</strong> ${err.message}`, "error");
         if (statusDiv) statusDiv.innerText = "";
       });
     });

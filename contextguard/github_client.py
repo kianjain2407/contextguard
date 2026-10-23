@@ -244,45 +244,97 @@ class GitHubClient:
 
     def parse_pr_url(self, pr_url: str) -> Dict[str, Any]:
         """
-        Validates and parses a PR URL.
-        Format: https://github.com/{owner}/{repo}/pull/{pr_number}
+        Validates and parses a GitHub repository URL, PR URL, or shorthand identifier.
+        Supports:
+        - Repository URL: https://github.com/owner/repo or https://github.com/owner/repo.git
+        - Pull Request URL: https://github.com/owner/repo/pull/123
+        - Commit URL: https://github.com/owner/repo/commit/sha
+        - Shorthand: owner/repo, owner/repo#123, or 1-9
         """
-        pattern = r"^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)/?$"
-        match = re.match(pattern, pr_url.strip())
-        if not match:
-            # Also allow short-hand: owner/repo#number or pull/number for easy CLI
-            short_match = re.match(r"^([^/]+)/([^/#]+)#(\d+)$", pr_url.strip())
-            if short_match:
-                return {
-                    "owner": short_match.group(1),
-                    "repo": short_match.group(2),
-                    "pr_number": int(short_match.group(3))
-                }
-            number_match = re.match(r"^(\d+)$", pr_url.strip())
-            if number_match:
-                return {
-                    "owner": "shopkit",
-                    "repo": "shopkit",
-                    "pr_number": int(number_match.group(1))
-                }
-            raise ValueError(f"Invalid GitHub PR URL format: '{pr_url}'. Expected 'https://github.com/owner/repo/pull/123'")
+        raw = pr_url.strip()
+        # Clean trailing slashes and .git suffix if applicable
+        clean_url = re.sub(r'\.git/?$', '', raw)
+        clean_url = clean_url.rstrip('/')
 
-        return {
-            "owner": match.group(1),
-            "repo": match.group(2),
-            "pr_number": int(match.group(3))
-        }
+        # 1. PR URL: https://github.com/owner/repo/pull/123
+        pr_match = re.match(r"^https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)$", clean_url)
+        if pr_match:
+            return {
+                "owner": pr_match.group(1),
+                "repo": pr_match.group(2),
+                "pr_number": int(pr_match.group(3)),
+                "type": "pull"
+            }
+
+        # 2. Commit URL: https://github.com/owner/repo/commit/sha
+        commit_match = re.match(r"^https?://github\.com/([^/]+)/([^/]+)/commit/([0-9a-fA-F]+)$", clean_url)
+        if commit_match:
+            return {
+                "owner": commit_match.group(1),
+                "repo": commit_match.group(2),
+                "pr_number": 1,
+                "commit_sha": commit_match.group(3),
+                "type": "commit"
+            }
+
+        # 3. Shorthand: owner/repo#number
+        short_hash = re.match(r"^([^/]+)/([^/#]+)#(\d+)$", clean_url)
+        if short_hash:
+            return {
+                "owner": short_hash.group(1),
+                "repo": short_hash.group(2),
+                "pr_number": int(short_hash.group(3)),
+                "type": "pull"
+            }
+
+        # 4. Pure integer scenario index: 1-9
+        number_match = re.match(r"^(\d+)$", clean_url)
+        if number_match:
+            return {
+                "owner": "shopkit",
+                "repo": "shopkit",
+                "pr_number": int(number_match.group(1)),
+                "type": "mock"
+            }
+
+        # 5. Direct repository URL: https://github.com/owner/repo
+        repo_match = re.match(r"^https?://github\.com/([^/]+)/([^/]+)$", clean_url)
+        if repo_match:
+            return {
+                "owner": repo_match.group(1),
+                "repo": repo_match.group(2),
+                "pr_number": 1,
+                "type": "repo"
+            }
+
+        # 6. Shorthand repo: owner/repo
+        repo_short = re.match(r"^([^/]+)/([^/#]+)$", clean_url)
+        if repo_short:
+            return {
+                "owner": repo_short.group(1),
+                "repo": repo_short.group(2),
+                "pr_number": 1,
+                "type": "repo"
+            }
+
+        raise ValueError(
+            f"Invalid GitHub URL: '{pr_url}'. Supported formats: Repository (https://github.com/owner/repo), "
+            f"Pull Request (https://github.com/owner/repo/pull/123), or scenario number (1-9)."
+        )
 
     def fetch_pr_data(self, pr_url: str) -> Dict[str, Any]:
         """
-        Fetches diff, description, and metadata for the given PR.
+        Fetches diff, description, and metadata for the given PR, commit, or repository.
+        Works for public repositories without a token and authenticated GitHub queries.
         """
         parsed = self.parse_pr_url(pr_url)
         pr_number = parsed["pr_number"]
         repo = parsed["repo"]
         owner = parsed["owner"]
+        target_type = parsed.get("type", "pull")
+        commit_sha = parsed.get("commit_sha")
 
-        # Check mock dataset first (e.g. shopkit/shopkit)
+        # 1. Check built-in mock dataset first (e.g. shopkit/shopkit or 1-9)
         if (owner == "shopkit" or repo == "shopkit") and pr_number in MOCK_PRS:
             data = dict(MOCK_PRS[pr_number])
             data["owner"] = owner
@@ -290,31 +342,103 @@ class GitHubClient:
             data["pr_url"] = pr_url
             return data
 
-        # If live token is available, attempt real GitHub REST API fetch
+        # 2. Setup GitHub API headers
+        headers = {
+            "User-Agent": "ContextGuard-Verifier/1.0",
+            "Accept": "application/vnd.github.v3+json"
+        }
         if self.token:
-            try:
-                import requests
-                headers = {"Authorization": f"token {self.token}", "Accept": "application/vnd.github.v3+json"}
-                api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
-                resp = requests.get(api_url, headers=headers, timeout=10)
-                if resp.status_code == 200:
-                    pr_info = resp.json()
-                    diff_resp = requests.get(api_url, headers={**headers, "Accept": "application/vnd.github.v3.diff"}, timeout=10)
+            headers["Authorization"] = f"token {self.token}"
+
+        try:
+            import requests
+
+            # Case A: User provided a repository URL (type == 'repo')
+            if target_type == "repo":
+                # Check if repo has any PRs
+                pulls_url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
+                resp = requests.get(pulls_url, headers=headers, timeout=10)
+                if resp.status_code == 200 and resp.json():
+                    latest_pr = resp.json()[0]
+                    pr_number = latest_pr.get("number", 1)
+                    target_type = "pull"
+                else:
+                    # No PRs or repo has only commits: use latest commit
+                    commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"
+                    c_resp = requests.get(commits_url, headers=headers, timeout=10)
+                    if c_resp.status_code == 200 and c_resp.json():
+                        commit_sha = c_resp.json()[0]["sha"]
+                        target_type = "commit"
+
+            # Case B: Fetch specific commit
+            if target_type == "commit" and commit_sha:
+                c_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{commit_sha}"
+                c_resp = requests.get(c_url, headers=headers, timeout=10)
+                diff_resp = requests.get(c_url, headers={**headers, "Accept": "application/vnd.github.v3.diff"}, timeout=10)
+
+                if c_resp.status_code == 200:
+                    c_data = c_resp.json()
+                    commit_msg = c_data.get("commit", {}).get("message", "")
+                    lines = commit_msg.strip().splitlines()
+                    title = lines[0] if lines else f"Commit {commit_sha[:7]}"
+                    desc = "\n".join(lines[1:]).strip() if len(lines) > 1 else title
+                    author = c_data.get("author", {}).get("login") if c_data.get("author") else c_data.get("commit", {}).get("author", {}).get("name", "unknown")
+                    diff_text = diff_resp.text if diff_resp.status_code == 200 else ""
+
+                    target_file = ""
+                    m_file = re.search(r'\+\+\+ b/(\S+)', diff_text) or re.search(r'diff --git a/\S+ b/(\S+)', diff_text)
+                    if m_file:
+                        target_file = m_file.group(1)
+
                     return {
                         "pr_number": pr_number,
-                        "title": pr_info.get("title", ""),
-                        "description": pr_info.get("body", "") or "",
-                        "author": pr_info.get("user", {}).get("login", "unknown"),
-                        "diff": diff_resp.text if diff_resp.status_code == 200 else "",
+                        "title": title,
+                        "description": desc or title,
+                        "author": author,
+                        "diff": diff_text,
                         "owner": owner,
                         "repo": repo,
                         "pr_url": pr_url,
-                        "target_file": ""
+                        "target_file": target_file,
+                        "commit_sha": commit_sha
                     }
-            except Exception as e:
-                pass
 
-        # Fallback to mock PR 1 if unknown number for testing
+            # Case C: Fetch PR data
+            api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
+            resp = requests.get(api_url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                pr_info = resp.json()
+                diff_resp = requests.get(api_url, headers={**headers, "Accept": "application/vnd.github.v3.diff"}, timeout=10)
+                diff_text = diff_resp.text if diff_resp.status_code == 200 else ""
+
+                target_file = ""
+                m_file = re.search(r'\+\+\+ b/(\S+)', diff_text) or re.search(r'diff --git a/\S+ b/(\S+)', diff_text)
+                if m_file:
+                    target_file = m_file.group(1)
+
+                return {
+                    "pr_number": pr_number,
+                    "title": pr_info.get("title", f"Pull Request #{pr_number}"),
+                    "description": pr_info.get("body", "") or "",
+                    "author": pr_info.get("user", {}).get("login", "unknown") if pr_info.get("user") else "unknown",
+                    "diff": diff_text,
+                    "owner": owner,
+                    "repo": repo,
+                    "pr_url": pr_url,
+                    "target_file": target_file
+                }
+            elif resp.status_code == 404:
+                # Fallback: check if latest commit exists
+                commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"
+                c_resp = requests.get(commits_url, headers=headers, timeout=10)
+                if c_resp.status_code == 200 and c_resp.json():
+                    sha = c_resp.json()[0]["sha"]
+                    return self.fetch_pr_data(f"https://github.com/{owner}/{repo}/commit/{sha}")
+
+        except Exception as e:
+            pass
+
+        # Fallback to mock PR 1 if unknown or offline
         fallback = dict(MOCK_PRS.get(pr_number, MOCK_PRS[1]))
         fallback["pr_number"] = pr_number
         fallback["owner"] = owner
