@@ -1,188 +1,275 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-header">
-  <h1 class="page-title">Developer View</h1>
-  <p class="page-subtitle">Submit pull requests for context-grounded verification and inspect verified verdicts.</p>
+
+<!-- Header Banner -->
+<div class="page-header" style="text-align: center; margin-bottom: 2rem;">
+  <h1 class="page-title" style="font-size: 1.85rem; font-weight: 800; color: #fff;">AI Code Review Fact-Checker</h1>
+  <p class="page-subtitle" style="font-size: 1rem; color: var(--text-muted); max-width: 650px; margin: 0.5rem auto 0;">
+    AI reviewers often flag working code as broken. ContextGuard writes and runs real tests to prove if the AI is right, or if it was just a false alarm.
+  </p>
 </div>
 
-<!-- PR Submission Card -->
-<div class="card">
-  <div class="card-title">Submit Repository or Pull Request for Verification</div>
+<!-- Primary Submission Card -->
+<div class="card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); border: 1px solid #334155;">
+  <div class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">
+    Enter GitHub Code to Fact-Check
+  </div>
+  <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+    Paste any public GitHub repository link (e.g. <code>https://github.com/snehal-k296/HabiCity.git</code>), a PR link, or choose a 1-click sample scenario below:
+  </p>
+
   <form id="pr-submit-form">
-    <div class="form-group">
-      <label class="form-label" for="pr-url-input">GitHub Repository URL (e.g. https://github.com/snehal-k296/HabiCity.git), Pull Request URL, or Scenario (1-9)</label>
-      <input type="text" id="pr-url-input" class="form-input" placeholder="https://github.com/snehal-k296/HabiCity.git" value="https://github.com/shopkit/shopkit/pull/1" required>
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <input type="text" id="pr-url-input" class="form-input" 
+             placeholder="https://github.com/snehal-k296/HabiCity.git or https://github.com/shopkit/shopkit/pull/1" 
+             value="https://github.com/shopkit/shopkit/pull/1" 
+             style="font-size: 0.95rem; padding: 0.75rem 1rem;" required>
     </div>
+    
     <div style="display: flex; gap: 0.75rem; align-items: center;">
-      <button type="submit" id="pr-submit-btn" class="btn btn-primary">Verify Codebase / PR</button>
+      <button type="submit" id="pr-submit-btn" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 600; cursor: pointer;">
+        🔍 Fact-Check This Code
+      </button>
       <div id="submit-status" style="font-size: 0.85rem;"></div>
     </div>
+    
     <div id="pr-alert-banner" style="display: none; margin-top: 0.85rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.9rem;"></div>
   </form>
 
-  <div style="margin-top: 1rem;">
-    <span class="form-label">Quick Run Sample Scenarios:</span>
-    <div class="quick-btn-group">
-      <button onclick="loadQuickPr(1)" class="btn btn-secondary btn-sm">PR-1 (Clamp - Case 1)</button>
-      <button onclick="loadQuickPr(2)" class="btn btn-secondary btn-sm">PR-2 (Average - Case 2)</button>
-      <button onclick="loadQuickPr(3)" class="btn btn-secondary btn-sm">PR-3 (Palindrome - Case 3)</button>
-      <button onclick="loadQuickPr(4)" class="btn btn-secondary btn-sm">PR-4 (Slugify - Decisive Context)</button>
-      <button onclick="loadQuickPr(5)" class="btn btn-secondary btn-sm">PR-5 (Percent - Compliant)</button>
-      <button onclick="loadQuickPr(6)" class="btn btn-secondary btn-sm">PR-6 (Truncate - False Neg)</button>
-      <button onclick="loadQuickPr(7)" class="btn btn-secondary btn-sm">PR-7 (Email - Case 4)</button>
-      <button onclick="loadQuickPr(8)" class="btn btn-secondary btn-sm">PR-8 (Cart Total - Case 1)</button>
-      <button onclick="loadQuickPr(9)" class="btn btn-secondary btn-sm">PR-9 (Password - Compliant)</button>
+  <!-- 1-Click Scenarios -->
+  <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
+    <span class="form-label" style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">
+      Quick 1-Click Demos:
+    </span>
+    <div class="quick-btn-group" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+      <button onclick="loadQuickPr(1)" class="btn btn-secondary btn-sm" title="AI said code is broken, but tests prove it works!">
+        PR-1: False Alarm (Clamp)
+      </button>
+      <button onclick="loadQuickPr(2)" class="btn btn-secondary btn-sm" title="AI caught a real ZeroDivisionError">
+        PR-2: Real Defect (ZeroDivision)
+      </button>
+      <button onclick="loadQuickPr(3)" class="btn btn-secondary btn-sm" title="AI suggested a bad fix that breaks spaces">
+        PR-3: Bad AI Fix (Palindrome)
+      </button>
+      <button onclick="loadQuickPr(4)" class="btn btn-secondary btn-sm" title="ContextGuard uses repository tests to decide">
+        PR-4: Context-Aware (Slugify)
+      </button>
+      <button onclick="loadQuickPr(5)" class="btn btn-secondary btn-sm" title="Clean code passes with fast exit">
+        PR-5: Clean Code (Percent)
+      </button>
     </div>
   </div>
 </div>
 
 {% if selected_pr %}
-<!-- Selected PR Inspection -->
-<div class="card">
-  <div class="card-title">
-    <span>PR #{{ selected_pr.pr_number }}: {{ selected_pr.title }}</span>
-    {% if evidence.verdict %}
-      {% if evidence.verdict.final_verdict == 'COMPLIANT' %}
-        <span class="badge badge-compliant">VERIFIED COMPLIANT</span>
+<!-- Fact-Check Result Inspection -->
+<div class="card" style="border: 2px solid {% if evidence.verdict and evidence.verdict.final_verdict == 'COMPLIANT' %}#10b981{% else %}#ef4444{% endif %}; margin-top: 2rem;">
+  
+  <!-- Big Verdict Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #fff;">
+        PR #{{ selected_pr.pr_number }}: {{ selected_pr.title }}
+      </h2>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">
+        Author: <strong>{{ selected_pr.author }}</strong> | Target: <code>{{ selected_pr.target_file or 'Repository' }}</code>
+      </span>
+    </div>
+
+    <div>
+      {% if evidence.verdict %}
+        {% if evidence.verdict.final_verdict == 'COMPLIANT' %}
+          <span style="background: #064e3b; color: #34d399; border: 1px solid #059669; padding: 0.4rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.9rem;">
+            ✅ SAFE TO MERGE (COMPLIANT)
+          </span>
+        {% else %}
+          <span style="background: #450a0a; color: #f87171; border: 1px solid #dc2626; padding: 0.4rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.9rem;">
+            ❌ REAL BUG DETECTED (NON-COMPLIANT)
+          </span>
+        {% endif %}
       {% else %}
-        <span class="badge badge-non-compliant">NON-COMPLIANT</span>
+        <span class="badge badge-fast-exit">PENDING</span>
       {% endif %}
-    {% endif %}
+    </div>
   </div>
 
-  <div class="metrics-grid">
-    <div class="metric-card">
-      <div class="metric-label">Stage 2 AI Review</div>
-      <div class="metric-value" style="font-size: 1.25rem;">
+  <!-- 3 Simple Comparison Cards -->
+  <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    
+    <!-- Step 1: What AI Claimed -->
+    <div class="metric-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+      <div class="metric-label" style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">
+        🤖 Step 1: What AI Claimed
+      </div>
+      <div class="metric-value" style="font-size: 1.15rem; margin: 0.35rem 0; font-weight: 700;">
         {% if evidence.review %}
           {% if evidence.review.initial_verdict == 'COMPLIANT' %}
-            <span style="color: var(--color-compliant);">COMPLIANT</span>
+            <span style="color: var(--color-compliant);">Approved as Compliant</span>
           {% else %}
-            <span style="color: var(--color-non-compliant);">NON-COMPLIANT</span>
+            <span style="color: var(--color-non-compliant);">Flagged as Broken</span>
           {% endif %}
         {% else %}
           N/A
         {% endif %}
       </div>
-      <div class="metric-sub">{{ evidence.review.explanation if evidence.review else 'No review stored.' }}</div>
+      <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+        {{ evidence.review.explanation if evidence.review else 'No initial AI review generated.' }}
+      </div>
     </div>
 
-    <div class="metric-card">
-      <div class="metric-label">Stage 5 Final Verdict</div>
-      <div class="metric-value" style="font-size: 1.25rem;">
+    <!-- Step 2: What ContextGuard Tested -->
+    <div class="metric-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+      <div class="metric-label" style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">
+        🧪 Step 2: What Tests Ran
+      </div>
+      <div class="metric-value" style="font-size: 1.15rem; margin: 0.35rem 0; font-weight: 700;">
+        {% if evidence.run %}
+          Orig: <span style="color: {% if evidence.run.original_failed == 0 and evidence.run.original_errors == 0 %}var(--color-compliant){% else %}var(--color-non-compliant){% endif %};">
+            {{ evidence.run.original_passed }} Passed / {{ evidence.run.original_failed + evidence.run.original_errors }} Failed
+          </span>
+        {% else %}
+          <span style="color: var(--color-compliant);">Fast Pass (No defects)</span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+        {% if evidence.run %}
+          Tested both developer's code and proposed patch in an isolated Python sandbox.
+        {% else %}
+          Code was verified clean without requiring full sandbox synthesis.
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Step 3: Final Decision -->
+    <div class="metric-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+      <div class="metric-label" style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">
+        ⚖️ Step 3: The Fact-Check
+      </div>
+      <div class="metric-value" style="font-size: 1.15rem; margin: 0.35rem 0; font-weight: 700;">
         {% if evidence.verdict %}
           {% if evidence.verdict.final_verdict == 'COMPLIANT' %}
-            <span style="color: var(--color-compliant);">COMPLIANT</span>
+            <span style="color: var(--color-compliant);">Safe to Merge</span>
           {% else %}
-            <span style="color: var(--color-non-compliant);">NON-COMPLIANT</span>
+            <span style="color: var(--color-non-compliant);">Changes Needed</span>
           {% endif %}
-          <span style="font-size: 0.85rem; color: var(--text-muted);">({{ evidence.verdict.case_code }})</span>
         {% else %}
-          PENDING
+          Pending
         {% endif %}
       </div>
-      <div class="metric-sub">{{ evidence.verdict.decision_reason if evidence.verdict else 'Awaiting run.' }}</div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-label">Execution Results</div>
-      <div class="metric-value" style="font-size: 1.25rem;">
-        {% if evidence.run %}
-          Orig: <span style="color: {% if evidence.run.original_failed == 0 and evidence.run.original_errors == 0 %}var(--color-compliant){% else %}var(--color-non-compliant){% endif %};">{{ evidence.run.original_passed }}P / {{ evidence.run.original_failed + evidence.run.original_errors }}F</span>
-          | Fix: <span style="color: {% if evidence.run.fix_failed == 0 and evidence.run.fix_errors == 0 %}var(--color-compliant){% else %}var(--color-non-compliant){% endif %};">{{ evidence.run.fix_passed }}P / {{ evidence.run.fix_failed + evidence.run.fix_errors }}F</span>
-        {% else %}
-          N/A
-        {% endif %}
+      <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+        {{ evidence.verdict.decision_reason if evidence.verdict else 'Awaiting run.' }}
       </div>
-      <div class="metric-sub">Runtime: {{ '%.2f'|format(evidence.run.execution_time_ms) if evidence.run else 0 }}ms</div>
     </div>
+
   </div>
 
-  <div class="split-view">
-    <div>
-      <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Code Diff</h3>
-      <pre><code>{{ selected_pr.diff }}</code></pre>
-    </div>
-    <div>
-      <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Synthesized Test Suite</h3>
-      <pre><code>{{ evidence.tests.test_code if evidence.tests else 'No tests synthesized (Fast exit).' }}</code></pre>
-    </div>
+  <!-- Collapsible Details: Code Diff & Generated Tests -->
+  <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+    
+    <details style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem;">
+      <summary style="font-size: 0.9rem; font-weight: 600; cursor: pointer; color: #38bdf8;">
+        ▶ View Code Diff (What Changed)
+      </summary>
+      <div style="margin-top: 0.75rem;">
+        <pre style="background: #090d16; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem;"><code>{{ selected_pr.diff }}</code></pre>
+      </div>
+    </details>
+
+    <details style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem;">
+      <summary style="font-size: 0.9rem; font-weight: 600; cursor: pointer; color: #a855f7;">
+        ▶ View Synthesized Python Tests (How ContextGuard Tested It)
+      </summary>
+      <div style="margin-top: 0.75rem;">
+        <pre style="background: #090d16; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem;"><code>{{ evidence.tests.test_code if evidence.tests else 'No tests required (Fast exit approved code).' }}</code></pre>
+      </div>
+    </details>
+
+    {% if evidence.snippets %}
+    <details style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem;">
+      <summary style="font-size: 0.9rem; font-weight: 600; cursor: pointer; color: #10b981;">
+        ▶ View Retrieved Repository Context ({{ evidence.snippets|length }} snippets used)
+      </summary>
+      <div style="margin-top: 0.75rem;">
+        <div class="table-responsive">
+          <table class="table" style="font-size: 0.85rem;">
+            <thead>
+              <tr>
+                <th>Identifier</th>
+                <th>File Path</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in evidence.snippets %}
+              <tr>
+                <td><code>{{ s.identifier }}</code></td>
+                <td>{{ s.file_path }}</td>
+                <td><span class="badge badge-case-1">{{ s.snippet_type }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+    {% endif %}
+
   </div>
 
-  {% if evidence.snippets %}
-  <div style="margin-top: 1.25rem;">
-    <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-muted);">Retrieved Repository Context (Top Snippets)</h3>
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Identifier</th>
-            <th>File Path</th>
-            <th>Type</th>
-            <th>RRF Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in evidence.snippets %}
-          <tr>
-            <td><code>{{ s.identifier }}</code></td>
-            <td>{{ s.file_path }}</td>
-            <td><span class="badge badge-case-1">{{ s.snippet_type }}</span></td>
-            <td>{{ '%.4f'|format(s.rrf_score or 0) }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
 </div>
 {% endif %}
 
-<!-- Recent Pull Requests -->
-<div class="card">
-  <div class="card-title">Recent Pull Requests</div>
+<!-- Recent Fact-Checks History -->
+<div id="recent-section" class="card" style="margin-top: 2rem;">
+  <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+    <span>Recent Fact-Checks</span>
+    <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">Stored locally in DuckDB</span>
+  </div>
+  
   <div class="table-responsive">
     <table class="table">
       <thead>
         <tr>
-          <th>PR #</th>
+          <th>PR / Code</th>
           <th>Title</th>
           <th>Author</th>
-          <th>Final Verdict</th>
-          <th>Case Code</th>
-          <th>Status</th>
+          <th>Final Fact-Check</th>
+          <th>Why?</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         {% for pr in recent_prs %}
         <tr>
-          <td>#{{ pr.pr_number }}</td>
+          <td><strong>#{{ pr.pr_number }}</strong></td>
           <td>{{ pr.title }}</td>
           <td>{{ pr.author }}</td>
           <td>
             {% if pr.final_verdict == 'COMPLIANT' %}
-              <span class="badge badge-compliant">COMPLIANT</span>
+              <span class="badge badge-compliant">✅ SAFE</span>
             {% elif pr.final_verdict == 'NON_COMPLIANT' %}
-              <span class="badge badge-non-compliant">NON-COMPLIANT</span>
+              <span class="badge badge-non-compliant">❌ BUG</span>
             {% else %}
               <span class="badge badge-fast-exit">PENDING</span>
             {% endif %}
           </td>
-          <td><code>{{ pr.case_code or 'N/A' }}</code></td>
-          <td>{{ pr.status }}</td>
+          <td style="font-size: 0.85rem; color: var(--text-muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {{ pr.decision_reason or 'Pending review.' }}
+          </td>
           <td>
             <a href="/developer?pr_id={{ pr.pr_id }}" class="btn btn-secondary btn-sm">Inspect</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" style="text-align: center; color: var(--text-muted);">No pull requests submitted yet. Use the form above to verify a PR.</td>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+            No code checked yet. Use the search bar above to verify your first repository or PR!
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
 {% endblock %}

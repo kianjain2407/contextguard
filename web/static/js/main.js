@@ -45,9 +45,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       clearAlert();
       btn.disabled = true;
-      const originalText = "Verify Codebase / PR";
-      btn.innerText = "Verifying...";
-      if (statusDiv) statusDiv.innerHTML = "<span style='color: #38bdf8;'>Running ContextGuard verification pipeline...</span>";
+      const originalText = "🔍 Fact-Check This Code";
+      btn.innerText = "Checking...";
+      if (statusDiv) statusDiv.innerHTML = "<span style='color: #38bdf8;'>Running ContextGuard verification...</span>";
 
       fetch("/api/submit_pr", {
         method: "POST",

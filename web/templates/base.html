@@ -3,30 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ContextGuard — Verification Dashboard</title>
+  <title>ContextGuard — AI Code Review Fact-Checker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    /* Additional clean styles for simplified UX */
+    .how-it-works-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .how-it-works-content {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      max-width: 650px;
+      width: 100%;
+      padding: 2rem;
+      position: relative;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .step-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar">
     <div class="brand-container">
       <a href="/" class="brand-title">ContextGuard</a>
-      <span class="brand-badge">Verification Layer</span>
+      <span class="brand-badge" style="background: #2563eb; color: #fff;">AI Fact-Checker</span>
     </div>
     <div class="nav-links">
-      <a href="/developer" class="nav-link {% if role == 'DEVELOPER' %}active{% endif %}">Developer</a>
-      <a href="/reviewer" class="nav-link {% if role == 'REVIEWER' %}active{% endif %}">Reviewer</a>
-      <a href="/qa" class="nav-link {% if role == 'QA' %}active{% endif %}">QA Auditor</a>
-      <a href="/security" class="nav-link {% if role == 'SECURITY' %}active{% endif %}">Security</a>
-      <a href="/manager" class="nav-link {% if role == 'MANAGER' %}active{% endif %}">Manager</a>
-      <a href="/admin" class="nav-link {% if role == 'ADMIN' %}active{% endif %}">Admin</a>
-      <a href="/notifications" class="nav-link {% if role == 'NOTIFICATIONS' %}active{% endif %}">Notifications</a>
+      <a href="/developer" class="nav-link active">Verify Code</a>
+      <a href="#recent-section" class="nav-link">History</a>
+      <button onclick="toggleHowItWorks(true)" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem; cursor: pointer;">How It Works</button>
+      
+      <!-- Subtle Menu for Advanced Tools if needed -->
+      <div style="position: relative; display: inline-block; margin-left: 0.5rem;">
+        <button onclick="toggleAdvancedMenu()" class="btn btn-secondary btn-sm" style="opacity: 0.75; font-size: 0.75rem;">More ▾</button>
+        <div id="advanced-menu" style="display: none; position: absolute; right: 0; top: 110%; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; min-width: 160px; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);">
+          <a href="/reviewer" style="display: block; color: var(--text-muted); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">Reviewer Queue</a>
+          <a href="/qa" style="display: block; color: var(--text-muted); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">QA Test Suite</a>
+          <a href="/security" style="display: block; color: var(--text-muted); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">Audit Trail</a>
+          <a href="/manager" style="display: block; color: var(--text-muted); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">Manager Metrics</a>
+          <a href="/admin" style="display: block; color: var(--text-muted); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">Admin Settings</a>
+          <a href="/health" target="_blank" style="display: block; color: var(--color-compliant); padding: 0.35rem 0.5rem; font-size: 0.8rem; text-decoration: none;">System Health ↗</a>
+        </div>
+      </div>
     </div>
   </nav>
+
+  <!-- How It Works Modal -->
+  <div id="how-it-works-modal" class="how-it-works-modal" onclick="if(event.target === this) toggleHowItWorks(false)">
+    <div class="how-it-works-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: #fff;">How ContextGuard Works</h2>
+        <button onclick="toggleHowItWorks(false)" style="background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer;">✕</button>
+      </div>
+
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+        AI code reviewers (like ChatGPT or Copilot) often raise <strong>false alarms</strong>—flagging working code as defective. 
+        ContextGuard acts as an automated <strong>fact-checker</strong> to protect developers:
+      </p>
+
+      <div class="step-box">
+        <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 0.25rem;">🤖 Step 1: Ingest & Review</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          ContextGuard takes your code from GitHub and checks what the AI reviewer had to say about it.
+        </p>
+      </div>
+
+      <div class="step-box">
+        <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 0.25rem;">🧪 Step 2: Auto-Generate Real Tests</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          ContextGuard extracts your functions and automatically writes self-contained Python unit tests from the specification and repository context.
+        </p>
+      </div>
+
+      <div class="step-box">
+        <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 0.25rem;">⚖️ Step 3: Run in Sandbox & Fact-Check</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Both your original code and the AI's suggested fix are executed against the tests. 
+          If your original code passes, ContextGuard overrules the AI and approves your code as <strong>Safe (Compliant)</strong>!
+        </p>
+      </div>
+
+      <div style="text-align: right; margin-top: 1.25rem;">
+        <button onclick="toggleHowItWorks(false)" class="btn btn-primary btn-sm">Got it!</button>
+      </div>
+    </div>
+  </div>
 
   <main class="container">
     {% block content %}{% endblock %}
   </main>
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    function toggleHowItWorks(show) {
+      const modal = document.getElementById('how-it-works-modal');
+      if (modal) modal.style.display = show ? 'flex' : 'none';
+    }
+    function toggleAdvancedMenu() {
+      const m = document.getElementById('advanced-menu');
+      if (m) m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    }
+    document.addEventListener('click', function(e) {
+      const m = document.getElementById('advanced-menu');
+      if (m && !e.target.closest('div[style*="position: relative"]')) {
+        m.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
